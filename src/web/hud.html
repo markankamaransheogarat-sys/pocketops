@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>PocketOps // Sentinel HUD</title>
+  <style>
+    :root {
+      --bg: #070b0e;
+      --card: #0f161c;
+      --border: #1a252f;
+      --cyan: #00e5ff;
+      --cyan-dim: rgba(0, 229, 255, 0.15);
+      --green: #00ff66;
+      --amber: #ffb700;
+      --crimson: #ff3366;
+      --text: #e6edf3;
+      --muted: #7d8b99;
+      --mono: 'SF Mono', 'Fira Code', 'Roboto Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+    .container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge {
+      background: var(--cyan-dim);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .hostname { font-size: 15px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .card-value { font-size: 20px; font-weight: 700; font-family: var(--mono); }
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: #141d24;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .progress-bar { height: 100%; width: 0%; transition: width 0.4s ease; }
+    .bar-green { background: var(--green); }
+    .bar-amber { background: var(--amber); }
+    .bar-crimson { background: var(--crimson); }
+    
+    .process-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+    .process-table th { text-align: left; color: var(--muted); padding-bottom: 6px; font-weight: 400; font-size: 11px; }
+    .process-table td { padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.04); }
+    
+    .actions { display: flex; gap: 10px; }
+    button {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:active { transform: scale(0.98); }
+    button.primary {
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="badge">⚡ POCKETOPS</span>
+        <span class="hostname" id="hostTitle">...</span>
+      </div>
+      <span style="font-family:var(--mono); font-size:12px; color:var(--green);" id="uptime">UP: ...</span>
+    </header>
+
+    <div class="grid">
+      <!-- Disk Gauge -->
+      <div class="card">
+        <span class="card-title">💾 Disk Storage (/)</span>
+        <div class="card-value" id="diskVal">-- GB</div>
+        <div class="progress-track">
+          <div class="progress-bar bar-green" id="diskBar"></div>
+        </div>
+        <span style="font-size:11px; font-family:var(--mono); color:var(--muted);" id="diskSub">-- free</span>
+      </div>
+
+      <!-- RAM Gauge -->
+      <div class="card">
+        <span class="card-title">🧠 Memory Usage</span>
+        <div class="card-value" id="memVal">-- MB</div>
+        <div class="progress-track">
+          <div class="progress-bar bar-green" id="memBar"></div>
+        </div>
+        <span style="font-size:11px; font-family:var(--mono); color:var(--muted);" id="memSub">-- free</span>
+      </div>
+    </div>
+
+    <!-- CPU Load -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="card-title">🔥 CPU Load Average</span>
+        <span style="font-family:var(--mono); font-size:11px; color:var(--muted);" id="cpuCores">-- cores</span>
+      </div>
+      <div class="card-value" id="loadVal">-- / -- / --</div>
+    </div>
+
+    <!-- Top Processes -->
+    <div class="card">
+      <span class="card-title">⚡ Top RAM Processes</span>
+      <table class="process-table">
+        <thead>
+          <tr>
+            <th>PID</th>
+            <th>COMMAND</th>
+            <th style="text-align:right;">RAM</th>
+            <th style="text-align:right;">CPU</th>
+          </tr>
+        </thead>
+        <tbody id="procBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="actions">
+      <button onclick="cleanDisk()">🧹 Clean Caches</button>
+      <button onclick="sendAlert()" class="primary">📢 Test Alert</button>
+    </div>
+  </div>
+
+  <script>
+    async function loadMetrics() {
+      try {
+        const res = await fetch('/api/metrics');
+        const data = await res.json();
+        
+        document.getElementById('hostTitle').textContent = data.hostname;
+        document.getElementById('uptime').textContent = 'UP: ' + data.uptime;
+        
+        // Disk
+        document.getElementById('diskVal').textContent = `${data.disk.usedGb} / ${data.disk.totalGb} GB`;
+        document.getElementById('diskSub').textContent = `${data.disk.availGb} GB free (${data.disk.usedPercent}%)`;
+        const dBar = document.getElementById('diskBar');
+        dBar.style.width = data.disk.usedPercent + '%';
+        dBar.className = 'progress-bar ' + (data.disk.usedPercent > 85 ? 'bar-crimson' : data.disk.usedPercent > 70 ? 'bar-amber' : 'bar-green');
+
+        // Mem
+        document.getElementById('memVal').textContent = `${data.memory.usedMb} / ${data.memory.totalMb} MB`;
+        document.getElementById('memSub').textContent = `${data.memory.freeMb} MB free (${data.memory.usedPercent}%)`;
+        const mBar = document.getElementById('memBar');
+        mBar.style.width = data.memory.usedPercent + '%';
+        mBar.className = 'progress-bar ' + (data.memory.usedPercent > 85 ? 'bar-crimson' : data.memory.usedPercent > 70 ? 'bar-amber' : 'bar-green');
+
+        // CPU
+        document.getElementById('loadVal').textContent = `${data.cpu.load1}  |  ${data.cpu.load5}  |  ${data.cpu.load15}`;
+        document.getElementById('cpuCores').textContent = `${data.cpu.cores} cores`;
+
+        // Processes
+        const tbody = document.getElementById('procBody');
+        tbody.innerHTML = '';
+        data.topProcesses.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="color:var(--muted);">${p.pid}</td>
+            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.cmd}</td>
+            <td style="text-align:right; color:var(--amber); font-weight:600;">${p.mem}%</td>
+            <td style="text-align:right; color:var(--cyan);">${p.cpu}%</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (_) {}
+    }
+
+    async function cleanDisk() {
+      if (!confirm('Run safe cache cleanup (pip, npm, /tmp)?')) return;
+      try {
+        const res = await fetch('/api/clean', { method: 'POST' });
+        const data = await res.json();
+        alert('Cleaned:\n' + (data.cleaned.join('\n') || 'No junk found'));
+        loadMetrics();
+      } catch (err) {
+        alert('Failed: ' + err.message);
+      }
+    }
+
+    async function sendAlert() {
+      const msg = prompt('Enter alert message:', 'Server test ping from Mobile HUD');
+      if (!msg) return;
+      try {
+        await fetch('/api/alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, title: 'Manual Ping' }),
+        });
+        alert('Alert dispatched!');
+      } catch (err) {
+        alert('Failed: ' + err.message);
+      }
+    }
+
+    loadMetrics();
+    setInterval(loadMetrics, 3000);
+  </script>
+</body>
+</html>

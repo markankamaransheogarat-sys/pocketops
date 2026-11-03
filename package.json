@@ -1,0 +1,27 @@
+{
+  "name": "pocketops",
+  "version": "1.0.0",
+  "description": "📱 Zero-Dependency Linux Server Sentinel & Mobile Telegram HUD with Push Alerts, Command Execution & Disk Guard",
+  "main": "src/index.js",
+  "bin": {
+    "pocketops": "bin/pocketops.js"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "node bin/pocketops.js daemon",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "devops",
+    "telegram-bot",
+    "server-monitoring",
+    "disk-guard",
+    "push-notifications",
+    "mobile-hud",
+    "zero-dependency",
+    "linux",
+    "sysadmin"
+  ],
+  "author": "Konstantin (@markankamaransheogarat-sys)",
+  "license": "MIT"
+}
